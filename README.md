@@ -4,6 +4,8 @@ Create a conda env:
 
 conda create --name web python=3.8.3
 
+pip install -r requirements.txt
+
 Activate the conda env before running:
 
 conda activate web

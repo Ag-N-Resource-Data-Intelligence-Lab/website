@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Dashboard</title>
+    <style>
+        #chat-window {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #fff;
+        }
+        #chat-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        #chat-input {
+            flex-grow: 1;
+            padding: 10px;
+            resize: vertical;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .setting-box {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .setting-box label {
+            font-weight: bold;
+        }
+        .setting-box textarea {
+            padding: 8px;
+            resize: vertical;
+            height: 50px;
+        }
+        #setting-section {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        #setting-section > div {
+            flex: 1;
+            min-width: 250px;
+        }
+        #simulation-params .setting-box {
+            width: 150px;        /* small rectangle */
+        }
+        
+        #simulation-params .setting-box label {
+            white-space: nowrap;   /* keep label on one line */
+        }
+
+        #simulation-button {
+            position: relative;
+            overflow: hidden;
+            background-image: linear-gradient(180deg, #4e9cff 0%, #1a4bb8 100%);
+        }
+
+        /* lighter version of gradient (30% white mix) */
+        #simulation-button.loading {
+            background-image: linear-gradient(
+                180deg,
+                #a8c9ff 0%,    /* lightened #4e9cff */
+                #7c9ef0 100%   /* lightened #1a4bb8 */
+            );
+        }
+
+        /* the original color fill bar */
+        #simulation-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background-image: linear-gradient(180deg, #4e9cff 0%, #1a4bb8 100%);
+            z-index: 1;
+        }
+
+        /* button text stays above everything */
+        #simulation-button .sim-label {
+            position: relative;
+            z-index: 2;
+            color: white;
+        }
+
+        #options-container {
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        #num-options {
+            width: 80px;
+        }
+
+        .option-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .option-row label {
+            font-weight: bold;
+            min-width: 80px;
+        }
+
+        .option-row input {
+            flex: 1;
+            padding: 4px 6px;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Agreement Analysis</h1>
+
+    <!-- Upload Form -->
+    <form method="post" enctype="multipart/form-data">
+        <label>Upload Agreement:</label>
+        <input type="file" name="file" required>
+        <button type="submit">Analyze</button>
+    </form>
+
+    <hr>
+
+    <!-- Chatbox UI -->
+    <div class="container">
+        <h2>Interact with Virtual Agents</h2>
+
+        <!-- Prompt Settings -->
+        <div id="setting-section">
+            <div class="setting-box">
+                <label for="context-setting">
+                    Context Setting
+                    <button type="button" onclick="document.getElementById('context-setting').value = ''">Clear</button>
+                </label>
+                <textarea id="context-setting" placeholder="Objectives or any necessary statements of the survey, e.g., this is a survey for investigating the baseline of farmers' awareness and understanding regarding the ownership of farming data in Florida."></textarea>
+            </div>
+            <div class="setting-box">
+                <label for="role-setting">
+                    Role Setting
+                    <button type="button" onclick="document.getElementById('role-setting').value = ''">Clear</button>
+                </label>
+                <textarea id="role-setting" placeholder="Role and demographics, e.g., farmer, male born in 1972, outdoor farm owner, Master's degree, farm size is in the range of 2000 or more acres, you are collecting data in your farm."></textarea>
+            </div>
+            <div class="setting-box">
+                <label for="scenario-setting">
+                    Scenario Setting
+                    <button type="button" onclick="document.getElementById('scenario-setting').value = ''">Clear</button>
+                </label>
+                <textarea id="scenario-setting" placeholder="Survey questions, e.g., Companies may use your data in various ways. However, in return they may lower the price for products. Would you: prefer to pay a higher price but control your data, or prefer a lower price by providing data."></textarea>
+            </div>
+        </div>
+
+        <div id="simulation-params">
+            <div class="setting-box">
+                <label for="num-simulations">Number of simulations</label>
+                <input
+                    type="number"
+                    id="num-simulations"
+                    min="1"
+                >
+            </div>
+            <div class="setting-box">
+                <label for="num-options">Number of options</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input
+                        type="number"
+                        id="num-options"
+                        min="2"
+                    >
+                    <button type="button" id="options-button" onclick="extractOptions()">
+                        Options
+                    </button>
+                    <button type="button" id="clear-options-button" onclick="clearOptions()">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        </div>   
+        
+        <div id="options-container"></div>
+
+        <button type="button" onclick="generatePrompt()">Generate Prompt</button>
+
+        <!-- Chat Display -->
+        <div id="chat-window"></div>
+
+        <!-- Chat Form -->
+        <form id="chat-form">
+            <textarea id="chat-input" rows="3" placeholder="Type your prompt..."></textarea>
+            <button type="submit">Send</button>
+            <button type="button" id="simulation-button" onclick="runSimulation()">
+                <span class="sim-label">Simulation</span>
+                <span id="simulation-progress"></span>
+            </button>
+            <button type="button" onclick="clearChat()">Clear</button>
+        </form>
+    </div>
+
+    <!-- <a href="/logout">Logout</a> -->
+
+    <!-- JS Chat Logic -->
+    <script>
+        ["context-setting", "role-setting", "scenario-setting"].forEach(id => {
+            const el = document.getElementById(id);
+
+            el.addEventListener("keydown", function (e) {
+                // Only trigger on Enter, not Shift+Enter
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault(); // avoid adding a new line
+
+                    // If empty → fill it with placeholder text
+                    if (!this.value.trim()) {
+                        this.value = this.placeholder;
+                    }
+                }
+            });
+        });
+        document.getElementById("chat-form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const input = document.getElementById("chat-input");
+            const message = input.value.trim();
+            if (!message) return;
+
+            const chatWindow = document.getElementById("chat-window");
+            chatWindow.innerHTML += `<div><strong>You:</strong> ${message}</div>`;
+            input.value = "";
+
+            try {
+                const res = await fetch("/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await res.json();
+                chatWindow.innerHTML += `<div><strong>LLM:</strong> ${data.reply}</div>`;
+            } catch (err) {
+                chatWindow.innerHTML += `<div><em>⚠️ Error: Could not connect to LLM.</em></div>`;
+            }
+
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        });
+
+        function clearChat() {
+            document.getElementById("chat-window").innerHTML = "";
+            document.getElementById("chat-input").value = "";
+        }
+
+        function generatePrompt() {
+            const context = document.getElementById("context-setting").value.trim();
+            const role = document.getElementById("role-setting").value.trim();
+            const scenario = document.getElementById("scenario-setting").value.trim();
+
+            const template = `${context} Now I need you to play as a ${role} Answer the following question based on the role you are playing: ${scenario}`  ;
+            document.getElementById("chat-input").value = template;
+        }
+
+        async function extractOptions() {
+            const scenarioEl = document.getElementById("scenario-setting");
+            const numOptionsEl = document.getElementById("num-options");
+            const container = document.getElementById("options-container");
+
+            const question = scenarioEl.value.trim();
+            let numOptions = parseInt(numOptionsEl.value, 10);
+
+            if (!question) {
+                alert("Please enter the survey question in the Scenario Setting box first.");
+                return;
+            }
+            if (isNaN(numOptions) || numOptions <= 0) {
+                alert("Please enter a valid number of options.");
+                return;
+            }
+
+            // Optional: simple loading message
+            container.innerHTML = "<em>Extracting options...</em>";
+
+            let res;
+            try {
+                res = await fetch("/extract_options", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        num_options: numOptions
+                    })
+                });
+            } catch (err) {
+                container.innerHTML = "<em>⚠️ Error: Could not connect to server.</em>";
+                return;
+            }
+
+            const data = await res.json();
+
+            if (data.error) {
+                container.innerHTML = `<em>⚠️ ${data.error}</em>`;
+                console.warn("extract_options raw response:", data.raw_response || "");
+                return;
+            }
+
+            const options = data.options || [];
+            if (!options.length) {
+                container.innerHTML = "<em>No options extracted. Check that the question clearly lists options.</em>";
+                return;
+            }
+
+            // Build option rows: "Option n: [text]"
+            container.innerHTML = "";
+            options.forEach((optText, idx) => {
+                const row = document.createElement("div");
+                row.className = "option-row";
+                row.innerHTML = `
+                    <label>Option ${idx + 1}:</label>
+                    <input type="text" class="option-input" value="${optText}">
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function clearOptions() {
+            const container = document.getElementById("options-container");
+            container.innerHTML = "";   // remove all option rows
+        }
+
+
+        let simProgressInterval = null;
+        let simCurrentProgress = 0;
+
+        function startSimulationProgress() {
+            const btn = document.getElementById("simulation-button");
+            const fill = document.getElementById("simulation-progress");
+
+            btn.disabled = true;
+            btn.style.cursor = "wait";
+
+            // Add "loading" class to use lighter gradient
+            btn.classList.add("loading");
+
+            simCurrentProgress = 0;
+            fill.style.width = "0%";
+
+            const maxFillBeforeDone = 90;
+
+            simProgressInterval = setInterval(() => {
+                if (simCurrentProgress < maxFillBeforeDone) {
+                    simCurrentProgress += 2;
+                    fill.style.width = simCurrentProgress + "%";
+                }
+            }, 100);
+        }
+
+        function finishSimulationProgress() {
+            const btn = document.getElementById("simulation-button");
+            const fill = document.getElementById("simulation-progress");
+
+            if (simProgressInterval) {
+                clearInterval(simProgressInterval);
+                simProgressInterval = null;
+            }
+
+            fill.style.width = "100%";
+
+            setTimeout(() => {
+                // remove fill bar
+                fill.style.width = "0%";
+
+                // restore original gradient
+                btn.classList.remove("loading");
+                btn.disabled = false;
+                btn.style.cursor = "pointer";
+            }, 300);
+        }
+
+    // ... keep your existing chat-form listener, clearChat(), generatePrompt() ...
+
+        async function runSimulation() {
+            const input = document.getElementById("chat-input");
+            const prompt = input.value.trim();
+
+            if (!prompt) {
+                alert("Please generate or type a multiple-choice survey question in the text area first.");
+                return;
+            }
+
+            const numSimulationsInput = document.getElementById("num-simulations");
+            const numOptionsInput = document.getElementById("num-options");
+
+            let numSimulations = parseInt(numSimulationsInput.value, 10);
+            let numOptions = parseInt(numOptionsInput.value, 10);
+
+            if (isNaN(numSimulations) || numSimulations <= 0) numSimulations = 20;
+            if (isNaN(numOptions) || numOptions < 2) numOptions = 4;
+            if (numSimulations > 100) numSimulations = 100;
+
+            // 🔹 NEW: read options from option boxes
+            const optionInputs = document.querySelectorAll("#options-container .option-input");
+            const options = Array.from(optionInputs)
+                .map(el => el.value.trim())
+                .filter(t => t.length > 0);
+
+            // Start button progress
+            startSimulationProgress();
+
+            let res;
+            try {
+                res = await fetch("/simulate", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        prompt,
+                        num_simulations: numSimulations,
+                        num_options: numOptions,
+                        options: options   // 🔹 send concrete options
+                    })
+                });
+            } catch (err) {
+                finishSimulationProgress();
+                alert("Error: Could not connect to the simulation endpoint.");
+                return;
+            }
+
+            const data = await res.json();
+            finishSimulationProgress();
+
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            const distribution = data.distribution || {};
+            const labels = Object.keys(distribution);
+            const values = Object.values(distribution);
+
+            if (!labels.length) {
+                alert("No distribution data returned.");
+                return;
+            }
+
+        
+
+            // Open a new popup window
+            const popup = window.open("", "_blank", "width=700,height=500");
+            if (!popup) {
+                alert("Popup window was blocked. Please allow popups for this site.");
+                return;
+            }
+
+            // Write HTML + Chart.js into the popup, using the dynamic n
+            popup.document.write(`
+                <html>
+                <head>
+                    <title>Simulation Results</title>
+                    <script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
+                    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"><\/script>
+                </head>
+                <body>
+                    <h2>Answer Distribution (n = ${numSimulations})</h2>
+                    <canvas id="resultsChart" width="400" height="400"></canvas>
+                    <script>
+                        Chart.register(ChartDataLabels);
+
+                        const ctx = document.getElementById('resultsChart').getContext('2d');
+                        const data = {
+                            labels: ${JSON.stringify(labels)},
+                            datasets: [{
+                                data: ${JSON.stringify(values)}
+                            }]
+                        };
+
+                        new Chart(ctx, {
+                            type: 'pie',
+                            data: data,
+                            options: {
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom'
+                                    },
+                                    datalabels: {
+                                        formatter: (value) => {
+                                            // show nothing for 0-count slices
+                                            return value > 0 ? value : '';
+                                        },
+                                        anchor: 'center',
+                                        align: 'center',
+                                        font: {
+                                            weight: 'bold'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    <\/script>
+                </body>
+                </html>
+            `);
+            popup.document.close();
+        }
+    </script>
+
+
+</body>
+</html>

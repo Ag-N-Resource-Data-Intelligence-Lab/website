@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Analysis Result</title>
+    <style>
+        .score-box {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            border: 2px solid #333;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .triangle {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-left: 10px;
+            vertical-align: middle;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 7px solid black;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .triangle.open {
+            transform: rotate(180deg);
+        }
+
+        .detailed-analysis {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .detailed-analysis.open {
+            display: block;
+        }
+
+        .detailed-section {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .detailed-section.open {
+            display: block;
+        }
+    </style>
+    <script>
+        function toggleDetailedAnalysis() {
+            const triangle = document.getElementById("detailed-analysis-triangle");
+            const detailedAnalysis = document.getElementById("detailed-analysis");
+            triangle.classList.toggle("open");
+            detailedAnalysis.classList.toggle("open");
+        }
+
+        function toggleSection(id) {
+            const triangle = document.getElementById(`triangle-${id}`);
+            const section = document.getElementById(`section-${id}`);
+            triangle.classList.toggle("open");
+            section.classList.toggle("open");
+        }
+    </script>
+</head>
+<body>
+    <div class="score-box"></div>
+        <p>Total Score: {{ total_score }}</p>
+        <p>Completeness: {{ completeness_score }}</p>
+        <p>Transparency: {{ transparency_score }}</p>
+    </div>
+    <h1>Analysis Result</h1>
+    <pre>{{ result }}</pre>
+    
+    <h2 onclick="toggleDetailedAnalysis()">
+        Detailed Analysis
+        <div id="detailed-analysis-triangle" class="triangle"></div>
+    </h2>
+    <div id="detailed-analysis" class="detailed-analysis">
+        {% for section, points in detailed_analysis.items() %}
+            <h3 onclick="toggleSection('{{ loop.index }}')">
+                {{ section }}
+                <div id="triangle-{{ loop.index }}" class="triangle"></div>
+            </h3>
+            <div id="section-{{ loop.index }}" class="detailed-section">
+                <ul>
+                    {% for point in points %}
+                        {% if point.type == 'text' %}
+                            <li>
+                                <strong>Regulation:</strong> {{ point.regulation }}<br>
+                                <strong>Analysis:</strong> {{ point.analysis }}
+                            </li>
+                        {% elif point.type == 'bullet' %}
+                            <li style="list-style-type: disc; margin-left: 20px;">
+                                <strong>Regulation:</strong> {{ point.regulation }}<br>
+                                <strong>Analysis:</strong> {{ point.analysis }}
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endfor %}
+    </div>
+
+    <a href="/dashboard">Back to Dashboard</a>
+</body>
+</html>

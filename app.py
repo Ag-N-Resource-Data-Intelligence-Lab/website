@@ -23,8 +23,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # User database (in-memory for simplicity)
 users_db = {}
 
-# OpenAI API key setup
-openai.api_key = "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"
+# OpenAI API key setup, put your key here
+openai.api_key = ""
 
 # Routes
 @app.route('/')
@@ -416,4 +416,5 @@ def analyze_file(filepath, regulations_path, weights_csv):
     return total_score, completeness_score, transparency_score, summary,detailed_analysis 
 
 if __name__ == '__main__':
+
     app.run(debug=True)

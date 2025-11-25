@@ -2,5 +2,6 @@ flask
 openai
 pandas
 ollama
-docx
+python-docx
 numpy
+
